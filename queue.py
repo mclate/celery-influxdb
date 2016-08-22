@@ -5,6 +5,7 @@ import os
 import time
 
 from celery import Celery
+from celery.app.control import Control
 from celery.events import EventReceiver
 from celery.events.state import State
 from celery.events.snapshot import Polaroid
@@ -115,6 +116,8 @@ class CeleryQueue(Process):
     def run(self):
         self.celery = Celery()
         self.celery.config_from_object(CeleryConfig)
+        self.control = Control(self.celery)
+        self.enable_event = datetime.datetime(2010, 1, 1)
 
         self.state = State()
         self.last_query = datetime.datetime.utcnow()
@@ -128,6 +131,11 @@ class CeleryQueue(Process):
         with CeleryRecorder(self.queue, self.state, freq=freq):
             while not self._running.is_set():
                 time.sleep(.1)
+
+                # Periodically re-enable celery control events
+                if (datetime.datetime.utcnow() - self.enable_event).total_seconds > 600:
+                    self.control.enable_events()
+                    self.enable_events = datetime.datetime.utcnow()
 
     def stop(self):
         self._running.set()

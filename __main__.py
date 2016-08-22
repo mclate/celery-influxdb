@@ -3,8 +3,9 @@ import signal
 
 from Queue import Empty
 from multiprocessing.queues import Queue
-from queue import CeleryQueue
+
 from backend.influx import TaskStats, QueueStats
+from queue import CeleryQueue
 
 
 logging.basicConfig(level=logging.INFO)
