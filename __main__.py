@@ -1,3 +1,4 @@
+import os
 import logging
 import signal
 
@@ -8,12 +9,14 @@ from backend.influx import TaskStats, QueueStats
 from queue import CeleryQueue
 
 
-logging.basicConfig(level=logging.INFO)
+debug = os.environ.get('DEBUG', False) in ['true', 'yes', '1', 'True', 'Yes', 'Y', 'y']
+logging.basicConfig(level=logging.INFO if not debug else logging.DEBUG)
 
 log = logging.getLogger(__name__)
 
 
 def process(itm):
+    count = 0
     for worker, tasks in itm['tasks'].iteritems():
         for name, states in tasks.iteritems():
             for state, counts in states.iteritems():
@@ -27,8 +30,13 @@ def process(itm):
                     avg_wait_in_millis=counts['avg_wait'],
                     max_wait_in_millis=counts['max_wait'],
                 )
+                count += 1
+    log.debug('Gathered %s events', count)
+
     for name, count in itm['queues'].iteritems():
         QueueStats(queue=name, count=count)
+        log.debug('Queue %s: %s', name, count)
+
     QueueStats.commit()
 
 
