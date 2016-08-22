@@ -37,7 +37,10 @@ def process(itm):
         QueueStats(queue=name, count=count)
         log.debug('Queue %s: %s', name, count)
 
-    QueueStats.commit()
+    try:
+        QueueStats.commit()
+    except AttributeError:  # Probably no queues were collected so far
+        pass
 
 
 def main():
