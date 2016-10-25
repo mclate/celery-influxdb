@@ -32,7 +32,7 @@ class TaskStats(SeriesHelper):
 
         tags = ['name', 'worker', 'state'] 
 
-        bulk_size = 500
+        bulk_size = 100
         autocommit = True
 
 
