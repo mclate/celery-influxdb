@@ -137,5 +137,7 @@ class CeleryQueue(Process):
                     self.control.enable_events()
                     self.enable_events = datetime.datetime.utcnow()
 
+        logger.info('Celery monitor stopped')
+
     def stop(self):
         self._running.set()
