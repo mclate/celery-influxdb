@@ -1,6 +1,7 @@
 import os
 import logging
 import signal
+import sys
 
 from Queue import Empty
 from multiprocessing.queues import Queue
@@ -54,7 +55,6 @@ def main():
         TaskStats.commit()
         QueueStats.commit()
 
-
     try:
         signal.signal(signal.SIGINT, stop)
         signal.signal(signal.SIGTERM, stop)
@@ -69,9 +69,14 @@ def main():
             except Exception as ex:
                 log.exception(str(ex))
 
+            if not celery_queue.is_alive():
+                log.error('CeleryQueue died. There is no more purpose in my life. I must die now.')
+                TaskStats.commit()
+                QueueStats.commit()
+                sys.exit(1)
+
     except KeyboardInterrupt:
         stop()
-
 
 
 if __name__ == '__main__':
