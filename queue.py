@@ -3,16 +3,17 @@ import json
 import logging
 import os
 import time
+from collections import defaultdict
+from multiprocessing import Event, Process
+from threading import Thread
 
 from celery import Celery
 from celery.app.control import Control
 from celery.events import EventReceiver
-from celery.events.state import State
 from celery.events.snapshot import Polaroid
+from celery.events.state import State
+
 from broker import Redis
-from collections import defaultdict
-from multiprocessing import Process, Event
-from threading import Thread
 
 logger = logging.getLogger(__name__)
 
@@ -60,8 +61,8 @@ class CeleryRecorder(Polaroid):
         now = datetime.datetime.utcnow()
 
         counts = defaultdict(  # Worker
-             lambda: defaultdict(  # Task name
-                 lambda: defaultdict( # Task state
+            lambda: defaultdict(  # Task name
+                lambda: defaultdict(  # Task state
                     lambda: dict({
                         'count': 0,
                         'avg_wait': 0.,

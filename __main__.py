@@ -1,14 +1,12 @@
-import os
 import logging
+import os
 import signal
 import sys
-
 from Queue import Empty
 from multiprocessing.queues import Queue
 
-from backend.influx import TaskStats, QueueStats
+from backend.influx import QueueStats, TaskStats
 from queue import CeleryQueue
-
 
 debug = os.environ.get('DEBUG', False) in ['true', 'yes', '1', 'True', 'Yes', 'Y', 'y']
 logging.basicConfig(level=logging.INFO if not debug else logging.DEBUG)
@@ -23,7 +21,7 @@ def process(itm):
             for state, counts in states.iteritems():
                 TaskStats(
                     name=name,
-                    worker=worker, 
+                    worker=worker,
                     state=state,
                     count=counts['count'],
                     avg_exec_in_millis=counts['avg_exec'],

@@ -2,7 +2,6 @@ import os
 
 from influxdb import InfluxDBClient, SeriesHelper
 
-
 dsn = os.environ.get('INFLUXDB_DSN', None)
 if dsn:
     client = InfluxDBClient.from_DSN(dsn)
@@ -30,11 +29,10 @@ class TaskStats(SeriesHelper):
             'max_wait_in_millis',
         ]
 
-        tags = ['name', 'worker', 'state'] 
+        tags = ['name', 'worker', 'state']
 
         bulk_size = 100
         autocommit = True
-
 
 
 class QueueStats(SeriesHelper):

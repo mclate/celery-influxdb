@@ -12,7 +12,6 @@ except ImportError:
     from urlparse import urlparse, urljoin
     from urllib import quote, unquote
 
-
 DEFAULT_REDIS_PRIORITY_STEPS = [0, 3, 6, 9]
 
 logger = logging.getLogger(__name__)
