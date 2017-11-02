@@ -14,7 +14,7 @@ logging.basicConfig(level=logging.INFO if not debug else logging.DEBUG)
 log = logging.getLogger(__name__)
 
 
-def process(itm):
+def process(itm: dict):
     count = 0
     for worker, tasks in itm['tasks'].iteritems():
         for name, states in tasks.iteritems():

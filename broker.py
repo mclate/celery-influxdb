@@ -1,5 +1,6 @@
 import logging
 import numbers
+from typing import Generator, List, Tuple, Union
 
 try:
     import redis
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class BrokerBase(object):
-    def __init__(self, broker_url, *args, **kwargs):
+    def __init__(self, broker_url: str, *args, **kwargs):
         purl = urlparse(broker_url)
         self.host = purl.hostname
         self.port = purl.port
@@ -35,7 +36,7 @@ class Redis(BrokerBase):
     sep = '\x06\x16'
     last_values = {}
 
-    def __init__(self, broker_url, *args, **kwargs):
+    def __init__(self, broker_url: str, *_, broker_options: dict = None, **__):
         super(Redis, self).__init__(broker_url)
         self.host = self.host or 'localhost'
         self.port = self.port or 6379
@@ -51,30 +52,28 @@ class Redis(BrokerBase):
             password=self.password,
         )
 
-        broker_options = kwargs.get('broker_options')
-
         if broker_options and 'priority_steps' in broker_options:
             self.priority_steps = broker_options['priority_steps']
         else:
             self.priority_steps = DEFAULT_REDIS_PRIORITY_STEPS
 
-    def _q_for_pri(self, queue, pri):
+    def _q_for_pri(self, queue: str, pri: int) -> str:
         if pri not in self.priority_steps:
             raise ValueError('Priority not in priority steps')
         return '{0}{1}{2}'.format(*((queue, self.sep, pri) if pri else (queue, '', '')))
 
-    def get_queues(self):
+    def get_queues(self) -> List[str]:
         return self.redis.keys()
 
-    def itercounts(self):
+    def itercounts(self) -> Generator[Tuple[str, int]]:
         queues = self.get_queues()
 
-        count = lambda name: sum([
-            self.redis.llen(x)
-            for x in [self._q_for_pri(name, pri) for pri in self.priority_steps]
-        ])
+        def count(name: str) -> int:
+            return sum([
+                self.redis.llen(x)
+                for x in [self._q_for_pri(name, pri) for pri in self.priority_steps]
+            ])
 
-        submitted = set()
         for name in queues:
             try:
                 value = count(name)
@@ -90,7 +89,7 @@ class Redis(BrokerBase):
             yield name, value
             self.last_values.update({name: value})
 
-    def _prepare_virtual_host(self, vhost):
+    def _prepare_virtual_host(self, vhost: Union[str, int]) -> int:
         if not isinstance(vhost, numbers.Integral):
             if not vhost or vhost == '/':
                 vhost = 0
