@@ -85,11 +85,18 @@ class Redis(BrokerBase):
                 else:
                     value = 0
 
-            if 'reply.celery.pidbox' in name:
+            if self._should_skip_queue(name):
                 continue
+            # if 'reply.celery.pidbox' in name:
+            #     continue
 
-            yield name, value
+            yield str(name), value
             self.last_values.update({name: value})
+
+    def _should_skip_queue(self, name):
+        for token in ['_kombu', 'pidbox', 'unacked_mutex', 'unacked_index']:
+            if token in str(name):
+                return True
 
     def _prepare_virtual_host(self, vhost):
         if not isinstance(vhost, numbers.Integral):

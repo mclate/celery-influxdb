@@ -1,3 +1,5 @@
 celery
 influxdb
 redis
+gevent
+expiringdict
