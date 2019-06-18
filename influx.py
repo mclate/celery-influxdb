@@ -22,22 +22,12 @@ class TaskStats(SeriesHelper):
         series_name = 'celery_task'
 
         fields = [
-            'received',
-            'started',
-            'succeeded',
-            'retried',
-            'failed',
-            'revoked',
-            'rejected',
-            'avg_exec',
-            'avg_wait',
-            'max_exec',
-            'max_wait',
+            'duration',
         ]
 
-        tags = ['task']
+        tags = ['task', 'event']
 
-        bulk_size = 500
+        bulk_size = 100
         autocommit = True
 
 

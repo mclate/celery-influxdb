@@ -1,10 +1,18 @@
+"""
+Tasks reported stats:
+* task - task name
+* event - what have happened
+* value:
+    * for event "started" means duration between received and started - that is wait in queue
+    * for "retried", "succeeded" and "failed" - execution times
+
+"""
 import gevent.monkey
 
 gevent.monkey.patch_all()
 
 import logging
 import os
-from collections import defaultdict
 
 from celery import Celery
 
@@ -20,27 +28,6 @@ freq = float(os.environ.get('FREQUENCY', 10))
 BROKER_URL = os.environ.get('CELERY_BROKER_URL')
 celery = Celery(broker=BROKER_URL)
 redis = Redis(BROKER_URL)
-
-
-def reavg(old, count, delta):
-    return (old * count + delta) / (count + 1)
-
-
-tasks = defaultdict(
-    lambda: dict(
-        received=0,
-        started=0,
-        succeeded=0,
-        retried=0,
-        failed=0,
-        revoked=0,
-        rejected=0,
-        avg_wait=0.,
-        max_wait=0.,
-        avg_exec=0.,
-        max_exec=0.,
-    )
-)
 
 heartbeats = set()
 
@@ -75,13 +62,10 @@ def worker_heartbeat(event):
 
 
 def task_handler(event):
-    # log.info(event['type'])
-    # log.info(event)
-    # log.info('    ')
-    # return
     try:
         cname = event['type'][5:]
         uuid = event['uuid']
+        duration = None
 
         if cname == 'received':
             name = event['name']
@@ -92,9 +76,7 @@ def task_handler(event):
             name = tuids[uuid]['name']
             tuids[uuid]['started'] = event['timestamp']
 
-            waited = tuids[uuid]['started'] - tuids[uuid]['received']
-            tasks[name]['avg_wait'] = reavg(tasks[name]['avg_wait'], tasks[name]['received'], waited)
-            tasks[name]['max_wait'] = max(tasks[name]['max_wait'], waited)
+            duration = tuids[uuid]['started'] - tuids[uuid]['received']
         else:
             if uuid not in tuids:
                 return
@@ -104,18 +86,18 @@ def task_handler(event):
             log.error(f'Event for task with no name: {event}')
             return
 
-        tasks[name][cname] += 1
         if cname in ['succeeded', 'failed', 'retried', 'rejected', 'revoked']:
 
             if tuids[uuid]['started']:
-                exec = event['timestamp'] - tuids[uuid]['started']
-                tasks[name]['avg_exec'] = reavg(tasks[name]['avg_exec'], tasks[name]['received'], exec)
-                tasks[name]['max_exec'] = max(tasks[name]['max_exec'], exec)
+                duration = event['timestamp'] - tuids[uuid]['started']
             del tuids[uuid]
 
-        # log.info(f'{name} - {cname}')
-        # log.info(tasks[name])
-        # log.info(len(tuids))
+        log.debug(f'[{len(tuids)}]  {name} [{cname}] = {duration}')
+        TaskStats(
+            task=name,
+            event=cname,
+            duration=duration or 0.,
+        )
     except Exception as ex:
         log.exception(str(ex), event)
 
@@ -142,12 +124,8 @@ class Submitter(Greenlet):
             while True:
                 gevent.sleep(freq)
 
-                for name, value in tasks.items():
-                    TaskStats(
-                        task=name,
-                        **value,
-                    )
                 for name, count in redis.itercounts():
+                    name = str(name)
                     log.info(f'Report queue: {name} = {count}')
                     QueueStats(queue=name, count=count)
 
@@ -156,7 +134,6 @@ class Submitter(Greenlet):
 
                 heartbeats = set()
 
-                TaskStats.commit()
                 QueueStats.commit()
                 WorkerStats.commit()
         except (KeyboardInterrupt, SystemExit):
