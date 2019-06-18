@@ -8,16 +8,16 @@ Tasks reported stats:
 
 """
 import gevent.monkey
-import sentry_sdk
-from sentry_sdk.integrations.logging import LoggingIntegration
 
 gevent.monkey.patch_all()
+
 
 import logging
 import os
 
 from celery import Celery
-
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 from broker import Redis
 from gevent import Greenlet
 from influx import TaskStats, QueueStats, WorkerStats
@@ -139,7 +139,7 @@ class Submitter(Greenlet):
 
                 for name, count in redis.itercounts():
                     name = str(name)
-                    log.info(f'Report queue: {name} = {count}')
+                    log.debug(f'Report queue: {name} = {count}')
                     QueueStats(queue=name, count=count)
 
                 WorkerStats(count=len(heartbeats))
