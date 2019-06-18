@@ -8,6 +8,8 @@ Tasks reported stats:
 
 """
 import gevent.monkey
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 gevent.monkey.patch_all()
 
@@ -21,13 +23,22 @@ from gevent import Greenlet
 from influx import TaskStats, QueueStats, WorkerStats
 from expiringdict import ExpiringDict
 
-logging.basicConfig(level=logging.DEBUG)
+debug = os.environ.get('DEBUG')
+logging.basicConfig(level=logging.DEBUG if debug else logging.INFO)
 log = logging.getLogger(__name__)
 
 freq = float(os.environ.get('FREQUENCY', 10))
 BROKER_URL = os.environ.get('CELERY_BROKER_URL')
 celery = Celery(broker=BROKER_URL)
 redis = Redis(BROKER_URL)
+
+sentry_dsn = os.environ.get('SENTRY_DSN')
+if sentry_dsn:
+    sentry_sdk.init(
+        dsn=sentry_dsn,
+        integrations=[LoggingIntegration(level=logging.INFO, event_level=logging.ERROR)],
+        debug=debug,
+    )
 
 heartbeats = set()
 
