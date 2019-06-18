@@ -116,23 +116,25 @@ def task_handler(event):
 class Collector(Greenlet):
     def _run(self):
         log.debug(f'Started collecting from {BROKER_URL}')
-        try:
-            with celery.connection() as connection:
-                recv = celery.events.Receiver(
-                    connection,
-                    handlers={'*': event_dispatcher},
-                )
-                log.debug(f'Receiver: {recv}')
-                recv.capture(limit=None, timeout=None, wakeup=True)
-        except (KeyboardInterrupt, SystemExit):
-            return
+        while True:
+            try:
+                with celery.connection() as connection:
+                    recv = celery.events.Receiver(
+                        connection,
+                        handlers={'*': event_dispatcher},
+                    )
+                    recv.capture(limit=None, timeout=None, wakeup=True)
+            except (KeyboardInterrupt, SystemExit):
+                return
+            except Exception as ex:
+                log.exception('Unhandled Collector exception')
 
 
 class Submitter(Greenlet):
     def _run(self):
         global heartbeats
-        try:
-            while True:
+        while True:
+            try:
                 gevent.sleep(freq)
 
                 for name, count in redis.itercounts():
@@ -141,14 +143,16 @@ class Submitter(Greenlet):
                     QueueStats(queue=name, count=count)
 
                 WorkerStats(count=len(heartbeats))
-                log.info(f'Report {len(heartbeats)} workers')
+                log.debug(f'Report {len(heartbeats)} workers')
 
                 heartbeats = set()
 
                 QueueStats.commit()
                 WorkerStats.commit()
-        except (KeyboardInterrupt, SystemExit):
-            return
+            except (KeyboardInterrupt, SystemExit):
+                return
+            except Exception as ex:
+                log.exception('Unhandled Submitter exception')
 
 
 if __name__ == '__main__':
