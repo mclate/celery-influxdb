@@ -70,15 +70,17 @@ class Redis(BrokerBase):
     def itercounts(self):
         queues = self.get_queues()
 
-        count = lambda name: sum([
-            self.redis.llen(x)
-            for x in [self._q_for_pri(name, pri) for pri in self.priority_steps]
-        ])
+        def count(name):
+            return sum([
+                self.redis.llen(x)
+                for x in [self._q_for_pri(name, pri) for pri in self.priority_steps]
+            ])
 
         submitted = set()
         for name in queues:
             try:
                 value = count(name)
+                logger.debug('Found %s items in queue %s', value, name)
             except:
                 if name not in self.last_values:  # Skip unknown empty queues
                     continue
